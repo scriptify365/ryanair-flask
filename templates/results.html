@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Results – Ryanair Flight Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+<div class="container my-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0"><i class="bi bi-list-check"></i> Search results</h2>
+    <a class="btn btn-outline-secondary" href="{{ url_for('index') }}"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+
+  {% if results and results|length > 0 %}
+    <p class="text-muted mb-2">Showing {{ (page-1)*per_page + 1 }}–{{ (page-1)*per_page + results|length }} of {{ total }} results</p>
+
+    <div class="table-responsive card shadow-sm">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Route</th>
+            <th>Departure</th>
+            {% if not one_way %}<th>Return</th>{% endif %}
+            <th>Price</th>
+            <th>Currency</th>
+            <th class="text-center">Open</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr>
+            <td class="text-nowrap">{{ r.route }}</td>
+            <td>
+              <div class="date-wrap">
+                <div class="date-primary">{{ r.out_date }}</div>
+                <div class="date-chip">{{ r.out_date|weekday_name }}</div>
+              </div>
+            </td>
+            {% if not one_way %}
+            <td>
+              <div class="date-wrap">
+                <div class="date-primary">{{ r.in_date }}</div>
+                <div class="date-chip">{{ r.in_date|weekday_name }}</div>
+              </div>
+            </td>
+            {% endif %}
+            <td class="fw-semibold">{{ r.price }}</td>
+            <td>{{ r.currency }}</td>
+            <td class="text-center">
+              <a class="btn btn-sm btn-primary" href="{{ r.link }}" target="_blank" rel="noopener">
+                <i class="bi bi-box-arrow-up-right"></i> Open
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination controls (POST with hidden payload to keep filters) -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <form method="post" class="mb-0">
+        {% for d in form_payload.departures %}
+          <input type="hidden" name="departures" value="{{ d }}">
+        {% endfor %}
+        {% for c in form_payload.arrival_countries %}
+          <input type="hidden" name="arrival_countries" value="{{ c }}">
+        {% endfor %}
+        <input type="hidden" name="arrival" value="{{ form_payload.arrival }}">
+        <input type="hidden" name="date_from" value="{{ form_payload.date_from }}">
+        <input type="hidden" name="date_to" value="{{ form_payload.date_to }}">
+        <input type="hidden" name="currency" value="{{ form_payload.currency }}">
+        {% if form_payload.one_way_only %}<input type="hidden" name="one_way_only" value="on">{% endif %}
+        <input type="hidden" name="min_stay" value="{{ form_payload.min_stay }}">
+        <input type="hidden" name="max_stay" value="{{ form_payload.max_stay }}">
+        <input type="hidden" name="out_weekday" value="{{ form_payload.out_weekday }}">
+        <input type="hidden" name="page" value="{{ page - 1 }}">
+        <button class="btn btn-outline-primary" {% if page <= 1 %}disabled{% endif %}>
+          <i class="bi bi-chevron-left"></i> Prev
+        </button>
+      </form>
+
+      <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+
+      <form method="post" class="mb-0">
+        {% for d in form_payload.departures %}
+          <input type="hidden" name="departures" value="{{ d }}">
+        {% endfor %}
+        {% for c in form_payload.arrival_countries %}
+          <input type="hidden" name="arrival_countries" value="{{ c }}">
+        {% endfor %}
+        <input type="hidden" name="arrival" value="{{ form_payload.arrival }}">
+        <input type="hidden" name="date_from" value="{{ form_payload.date_from }}">
+        <input type="hidden" name="date_to" value="{{ form_payload.date_to }}">
+        <input type="hidden" name="currency" value="{{ form_payload.currency }}">
+        {% if form_payload.one_way_only %}<input type="hidden" name="one_way_only" value="on">{% endif %}
+        <input type="hidden" name="min_stay" value="{{ form_payload.min_stay }}">
+        <input type="hidden" name="max_stay" value="{{ form_payload.max_stay }}">
+        <input type="hidden" name="out_weekday" value="{{ form_payload.out_weekday }}">
+        <input type="hidden" name="page" value="{{ page + 1 }}">
+        <button class="btn btn-outline-primary" {% if page >= total_pages %}disabled{% endif %}>
+          Next <i class="bi bi-chevron-right"></i>
+        </button>
+      </form>
+    </div>
+
+  {% else %}
+    <div class="alert alert-warning">
+      <i class="bi bi-emoji-frown"></i> No flights matched your filters.
+    </div>
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

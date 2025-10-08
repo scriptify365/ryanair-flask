@@ -1,0 +1,45 @@
+:root{
+  --brand: #4c7cf3;
+  --soft-bg: #f6f8ff;
+}
+
+body { background: #fafbfe; }
+
+.hero{
+  background: radial-gradient(1200px 400px at 50% -50%, var(--soft-bg), transparent),
+              linear-gradient(180deg, #ffffff, #f7f9ff);
+  border-bottom: 1px solid #eef1fb;
+}
+
+.card .form-select.fancy, 
+.card .form-control{
+  border-radius: 0.9rem;
+}
+
+.btn-primary{
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.table-hover tbody tr:hover{
+  background: #f8fbff;
+}
+
+/* Date presentation in results */
+.date-wrap{ display:flex; flex-direction:column; gap: .25rem; }
+.date-primary{ font-weight:600; }
+.date-chip{
+  display:inline-block; padding:.15rem .5rem; font-size:.8rem;
+  border-radius:999px; background:#eef1fb; color:#334155;
+}
+
+/* Chips for selected departures */
+.chips{ display:flex; flex-wrap:wrap; gap:.35rem; }
+.chip{
+  background:#eef1fb; color:#334155; padding:.25rem .6rem;
+  border-radius:999px; display:inline-flex; gap:.4rem; align-items:center; font-size:.85rem;
+}
+.chip .chip-x{
+  background:transparent; border:none; font-size:1rem; line-height:1;
+  cursor:pointer; color:#64748b; padding:0; margin-left:.2rem;
+}
