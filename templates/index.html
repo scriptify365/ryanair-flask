@@ -174,39 +174,71 @@
   function toggleStay(){ const dis = oneWay.checked; minStay.disabled = dis; maxStay.disabled = dis; }
   oneWay?.addEventListener('change', toggleStay); toggleStay();
 
-  // Departure airports (multi)
+  // --- Touch detection: phones/tablets ---
+  const isTouch = (('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches);
+
+  // === DEPARTURES (multi) ===
   const depSel = document.getElementById('departures');
   const depFilter = document.getElementById('dep_filter');
   const depChips = document.getElementById('dep_chips');
+
   function updateDepChips(){
     depChips.innerHTML = '';
     [...depSel.options].forEach(opt=>{
       if(opt.selected){
-        const chip = document.createElement('span');
+        const chip=document.createElement('span');
         chip.className='chip'; chip.textContent=opt.text;
         const x=document.createElement('button'); x.type='button'; x.className='chip-x'; x.innerHTML='&times;';
         x.onclick=()=>{ opt.selected=false; updateDepChips(); };
-        chip.appendChild(x); depChips.appendChild(chip);
+        chip.appendChild(x);
+        depChips.appendChild(chip);
       }
     });
   }
-  depSel.addEventListener('mousedown', e=>{ e.preventDefault(); const o=e.target; if(o.tagName==='OPTION'){ o.selected=!o.selected; updateDepChips(); }});
-  function applyDepFilter(){ const q=depFilter.value.trim().toLowerCase(); [...depSel.options].forEach(o=>{ const t=o.text.toLowerCase(), v=o.value.toLowerCase(); o.hidden=!(t.includes(q)||v.includes(q)); });}
-  depFilter.addEventListener('input', applyDepFilter);
-  depFilter.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const f=[...depSel.options].find(o=>!o.hidden); if(f){ f.selected=true; updateDepChips(); depFilter.value=''; applyDepFilter(); }}});
+  function applyDepFilter(){
+    const q = (depFilter?.value || '').trim().toLowerCase();
+    [...depSel.options].forEach(opt=>{
+      const t = opt.text.toLowerCase(), v = opt.value.toLowerCase();
+      opt.hidden = !(t.includes(q) || v.includes(q));
+    });
+  }
 
-  // Departure country (single) -> disables airports
+  // Desktop: toggle without Ctrl via mousedown
+  if(!isTouch){
+    depSel.addEventListener('mousedown', (e)=>{
+      e.preventDefault();
+      const opt = e.target;
+      if(opt.tagName==='OPTION'){
+        opt.selected = !opt.selected;
+        updateDepChips();
+      }
+    });
+  } else {
+    // Mobile: rely on native picker; update chips on change
+    depSel.addEventListener('change', updateDepChips, {passive:true});
+  }
+  depFilter?.addEventListener('input', applyDepFilter);
+  depFilter?.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const first=[...depSel.options].find(o=>!o.hidden);
+      if(first){ first.selected=true; updateDepChips(); depFilter.value=''; applyDepFilter(); }
+    }
+  });
+
+  // === DEPARTURE COUNTRY (single) -> disables departures ===
   const depCountrySel = document.getElementById('departure_country');
   const depCountryFilter = document.getElementById('dep_country_filter');
   const depCountryChip = document.getElementById('dep_country_chip');
+
   function toggleDepartureAirports(){
-    const any = !!depCountrySel.value;
+    const any = !!(depCountrySel?.value);
     depSel.disabled = any;
     if(any){ [...depSel.options].forEach(o=>o.selected=false); updateDepChips(); }
   }
   function updateDepCountryChip(){
     depCountryChip.innerHTML='';
-    const opt = depCountrySel.selectedOptions[0];
+    const opt = depCountrySel.selectedOptions?.[0];
     if(opt && opt.value){
       const chip=document.createElement('span'); chip.className='chip chip-country'; chip.textContent=opt.text;
       const x=document.createElement('button'); x.type='button'; x.className='chip-x'; x.innerHTML='&times;';
@@ -214,23 +246,33 @@
       chip.appendChild(x); depCountryChip.appendChild(chip);
     }
   }
-  depCountrySel.addEventListener('change', ()=>{ updateDepCountryChip(); toggleDepartureAirports(); });
-  function applyDepCountryFilter(){ const q=depCountryFilter.value.trim().toLowerCase(); [...depCountrySel.options].forEach(o=>{ if(!o.value) return; o.hidden=!o.text.toLowerCase().includes(q); }); }
-  depCountryFilter.addEventListener('input', applyDepCountryFilter);
+  depCountrySel?.addEventListener('change', ()=>{ updateDepCountryChip(); toggleDepartureAirports(); }, {passive:true});
+  function applyDepCountryFilter(){
+    const q=(depCountryFilter?.value || '').trim().toLowerCase();
+    [...depCountrySel.options].forEach(o=>{ if(!o.value) return; o.hidden=!o.text.toLowerCase().includes(q); });
+  }
+  depCountryFilter?.addEventListener('input', applyDepCountryFilter);
 
-  // Arrival airport (single) + filter
+  // === ARRIVAL (single) + filter ===
   const arrSel = document.getElementById('arrival');
   const arrFilter = document.getElementById('arr_filter');
-  function applyArrFilter(){ const q=arrFilter.value.trim().toLowerCase(); [...arrSel.options].forEach(o=>{ const t=o.text.toLowerCase(), v=o.value.toLowerCase(); o.hidden=!(t.includes(q)||v.includes(q)); });}
-  arrFilter.addEventListener('input', applyArrFilter);
+  function applyArrFilter(){
+    const q=(arrFilter?.value || '').trim().toLowerCase();
+    [...arrSel.options].forEach(o=>{
+      const t=o.text.toLowerCase(), v=o.value.toLowerCase();
+      o.hidden = !(t.includes(q)||v.includes(q));
+    });
+  }
+  arrFilter?.addEventListener('input', applyArrFilter);
 
-  // Arrival countries (multi) -> disables arrival airport
+  // === ARRIVAL COUNTRIES (multi) -> disables arrival airport ===
   const countriesSel = document.getElementById('arrival_countries');
   const countryFilter = document.getElementById('country_filter');
   const countryChips = document.getElementById('country_chips');
+
   function toggleArrivalAirports(){
     const any=[...countriesSel.options].some(o=>o.selected);
-    arrSel.disabled=any;
+    arrSel.disabled = any;
     if(any){ arrSel.value=""; }
   }
   function updateCountryChips(){
@@ -244,17 +286,44 @@
       }
     });
   }
-  countriesSel.addEventListener('mousedown', e=>{ e.preventDefault(); const o=e.target; if(o.tagName==='OPTION'){ o.selected=!o.selected; updateCountryChips(); toggleArrivalAirports(); }});
-  function applyCountryFilter(){ const q=countryFilter.value.trim().toLowerCase(); [...countriesSel.options].forEach(o=>{ o.hidden=!o.text.toLowerCase().includes(q); });}
-  countryFilter.addEventListener('input', applyCountryFilter);
-  countryFilter.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const f=[...countriesSel.options].find(o=>!o.hidden); if(f){ f.selected=true; updateCountryChips(); toggleArrivalAirports(); countryFilter.value=''; applyCountryFilter(); }}});
+  // Desktop: custom toggle; Mobile: native picker + change
+  if(!isTouch){
+    countriesSel.addEventListener('mousedown', (e)=>{
+      e.preventDefault();
+      const opt=e.target;
+      if(opt.tagName==='OPTION'){
+        opt.selected=!opt.selected;
+        updateCountryChips();
+        toggleArrivalAirports();
+      }
+    });
+  } else {
+    countriesSel.addEventListener('change', ()=>{
+      updateCountryChips();
+      toggleArrivalAirports();
+    }, {passive:true});
+  }
 
-  // Init
+  function applyCountryFilter(){
+    const q=(countryFilter?.value || '').trim().toLowerCase();
+    [...countriesSel.options].forEach(o=>{ o.hidden=!o.text.toLowerCase().includes(q); });
+  }
+  countryFilter?.addEventListener('input', applyCountryFilter);
+  countryFilter?.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const first=[...countriesSel.options].find(o=>!o.hidden);
+      if(first){ first.selected=true; updateCountryChips(); toggleArrivalAirports(); countryFilter.value=''; applyCountryFilter(); }
+    }
+  });
+
+  // --- init ---
   applyDepFilter(); updateDepChips();
   applyDepCountryFilter(); updateDepCountryChip(); toggleDepartureAirports();
   applyArrFilter();
   applyCountryFilter(); updateCountryChips(); toggleArrivalAirports();
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
