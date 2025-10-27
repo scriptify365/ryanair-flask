@@ -1,45 +1,37 @@
-:root{
-  --brand: #4c7cf3;
-  --soft-bg: #f6f8ff;
+/* --- Strong, visible buttons --- */
+.btn-cta{
+  --btn-bg:#2563eb;           /* royal blue */
+  --btn-bg-hover:#1d4ed8;
+  --btn-shadow:0 8px 18px rgba(37,99,235,.28);
+  background:var(--btn-bg);
+  border:1px solid var(--btn-bg);
+  color:#fff !important;
+  padding:.65rem 1rem;
+  font-weight:700;
+  letter-spacing:.2px;
+  border-radius:.8rem;
+  box-shadow:var(--btn-shadow);
+  transition:transform .08s ease, box-shadow .15s ease, background .15s ease;
 }
+.btn-cta:hover{ background:var(--btn-bg-hover); transform:translateY(-1px); box-shadow:0 10px 22px rgba(29,78,216,.35); }
+.btn-cta:active{ transform:translateY(0); box-shadow:0 6px 14px rgba(29,78,216,.25); }
 
-body { background: #fafbfe; }
+.btn-cta-wide{ padding:.9rem 1.25rem; font-size:1.05rem; border-radius:1rem; }
 
-.hero{
-  background: radial-gradient(1200px 400px at 50% -50%, var(--soft-bg), transparent),
-              linear-gradient(180deg, #ffffff, #f7f9ff);
-  border-bottom: 1px solid #eef1fb;
+.btn-nav{
+  background:#fff; border:2px solid #93c5fd; color:#1e40af;
+  font-weight:600; border-radius:.8rem; padding:.55rem 1rem;
+  box-shadow:0 4px 12px rgba(147,197,253,.3);
 }
+.btn-nav:hover{ background:#dbeafe; border-color:#60a5fa; color:#1e3a8a; }
 
-.card .form-select.fancy, 
-.card .form-control{
-  border-radius: 0.9rem;
+/* Make 'Open' stand out even at small size */
+.btn-open{
+  background:#10b981; border:1px solid #10b981; color:#fff !important;
+  padding:.55rem .9rem; font-weight:700; border-radius:.8rem;
+  box-shadow:0 8px 18px rgba(16,185,129,.28);
 }
+.btn-open:hover{ background:#059669; }
 
-.btn-primary{
-  background: var(--brand);
-  border-color: var(--brand);
-}
-
-.table-hover tbody tr:hover{
-  background: #f8fbff;
-}
-
-/* Date presentation in results */
-.date-wrap{ display:flex; flex-direction:column; gap: .25rem; }
-.date-primary{ font-weight:600; }
-.date-chip{
-  display:inline-block; padding:.15rem .5rem; font-size:.8rem;
-  border-radius:999px; background:#eef1fb; color:#334155;
-}
-
-/* Chips for selected departures */
-.chips{ display:flex; flex-wrap:wrap; gap:.35rem; }
-.chip{
-  background:#eef1fb; color:#334155; padding:.25rem .6rem;
-  border-radius:999px; display:inline-flex; gap:.4rem; align-items:center; font-size:.85rem;
-}
-.chip .chip-x{
-  background:transparent; border:none; font-size:1rem; line-height:1;
-  cursor:pointer; color:#64748b; padding:0; margin-left:.2rem;
-}
+/* Optional: larger price to balance stronger buttons */
+.price-badge{ font-size:1.35rem; }
