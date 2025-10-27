@@ -22,11 +22,17 @@ except Exception:
     Counter = Histogram = lambda *a, **k: None
     CONTENT_TYPE_LATEST = "text/plain"
 
+
+
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # ======================
 # Monitoring bootstrap
 # ======================
+@app.context_processor
+def inject_brand():
+    # Change brand via env without touching templates
+    return {"brand": os.getenv("APP_BRAND", "Flynair")}
 
 # Sentry (only if DSN set and package available)
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")

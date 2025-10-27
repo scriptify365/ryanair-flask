@@ -1,4 +1,113 @@
-/* --- Strong, visible buttons --- */
+:root{
+  --brand-blue:#0B5ED7;
+  --brand-yellow:#F2C200;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --line:#e8ecf7;
+}
+
+/* ===== Page & text ===== */
+html,body{height:100%;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+.hero{
+  background:linear-gradient(180deg,#ffffff 0%, #f3f6ff 100%);
+  border-bottom:1px solid #edf1fb;
+}
+.lead, .text-muted{color:var(--muted)!important;}
+
+/* ===== Cards / containers ===== */
+.card{
+  border:1px solid var(--line);
+  box-shadow:0 6px 20px rgba(15,23,42,.06);
+}
+.rounded-4{border-radius:1rem!important;}
+
+/* ===== Inputs & selects ===== */
+.form-control, .form-select{
+  border:1px solid #d7def1;
+  border-radius:.8rem;
+  padding:.65rem .9rem;
+}
+.form-control:focus, .form-select:focus{
+  border-color:var(--brand-blue);
+  box-shadow:0 0 0 .2rem rgba(11,94,215,.12);
+}
+
+/* Large, neat list boxes */
+select.fancy{
+  background:#fff;
+  min-height:14rem;
+  border-radius:.8rem;
+}
+
+/* Mobile select usability */
+@media (pointer:coarse){
+  select.fancy{min-height:auto;}
+}
+
+/* ===== Chips (selected items) ===== */
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;}
+.chip{
+  display:inline-flex;align-items:center;gap:.5rem;
+  background:#eef2ff;color:#1e3a8a;border:1px solid #dbeafe;
+  padding:.3rem .65rem;border-radius:999px;font-weight:600;font-size:.9rem;
+}
+.chip-country{background:#fff7ed;color:#9a3412;border-color:#fed7aa;}
+.chip-x{
+  border:0;background:transparent;color:#475569;cursor:pointer;
+  font-size:1rem;line-height:1;padding:0 .1rem;
+}
+.chip-x:hover{color:#0f172a;}
+
+/* ===== Date visuals in results table (when using table layout) ===== */
+.date-wrap{display:flex;flex-direction:column;gap:.1rem;}
+.date-primary{font-weight:700;}
+.date-chip{
+  display:inline-block;padding:.15rem .6rem;border-radius:999px;
+  background:rgba(11,94,215,.08);color:var(--brand-blue);font-weight:600;
+  font-size:.8rem;
+}
+
+/* ===== Result tiles (card grid) ===== */
+.flight-card{
+  border:1px solid var(--line);
+  border-radius:1rem;background:var(--card);
+  box-shadow:0 2px 12px rgba(15,23,42,.08);
+}
+.route{font-weight:700;letter-spacing:.2px;}
+.airline-pill{
+  font-size:.8rem;background:rgba(11,94,215,.08);
+  color:var(--brand-blue);border-radius:999px;padding:.2rem .6rem;
+}
+.price-badge{font-size:1.35rem;font-weight:800;color:var(--brand-blue);}
+
+/* ===== Buttons (strong & visible) ===== */
+.btn-primary{
+  background:var(--brand-blue)!important;
+  border-color:var(--brand-blue)!important;
+  font-weight:700;box-shadow:0 6px 14px rgba(11,94,215,.22);
+}
+.btn-primary:hover{filter:brightness(.95);transform:translateY(-1px);}
+.btn-outline-primary{
+  border-width:2px;font-weight:700;color:var(--brand-blue);
+}
+.btn-outline-primary:hover{background:#e7f0ff;border-color:var(--brand-blue);color:#0b3ea8;}
+.btn-outline-secondary{font-weight:600;}
+
+.btn-open{
+  background:#10b981;border:1px solid #10b981;color:#fff!important;
+  padding:.55rem .9rem;font-weight:800;border-radius:.8rem;
+  box-shadow:0 8px 18px rgba(16,185,129,.28);
+}
+.btn-open:hover{background:#0aa370;border-color:#0aa370;}
+
 .btn-cta{
   --btn-bg:#2563eb;           /* royal blue */
   --btn-bg-hover:#1d4ed8;
@@ -15,7 +124,6 @@
 }
 .btn-cta:hover{ background:var(--btn-bg-hover); transform:translateY(-1px); box-shadow:0 10px 22px rgba(29,78,216,.35); }
 .btn-cta:active{ transform:translateY(0); box-shadow:0 6px 14px rgba(29,78,216,.25); }
-
 .btn-cta-wide{ padding:.9rem 1.25rem; font-size:1.05rem; border-radius:1rem; }
 
 .btn-nav{
@@ -25,13 +133,23 @@
 }
 .btn-nav:hover{ background:#dbeafe; border-color:#60a5fa; color:#1e3a8a; }
 
-/* Make 'Open' stand out even at small size */
-.btn-open{
-  background:#10b981; border:1px solid #10b981; color:#fff !important;
-  padding:.55rem .9rem; font-weight:700; border-radius:.8rem;
-  box-shadow:0 8px 18px rgba(16,185,129,.28);
+/* ===== Tables (if you use table results) ===== */
+.table thead th{
+  font-weight:700;border-bottom:1px solid var(--line);
 }
-.btn-open:hover{ background:#059669; }
+.table-hover tbody tr:hover{background:#fbfdff;}
+.table td, .table th{vertical-align:middle;}
 
-/* Optional: larger price to balance stronger buttons */
-.price-badge{ font-size:1.35rem; }
+/* ===== Footer links ===== */
+.btn-warning-soft{
+  background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;
+}
+.btn-warning-soft:hover{background:#ffedd5;border-color:#fbbf24;color:#92400e;}
+
+/* ===== Utilities ===== */
+.text-nowrap{white-space:nowrap;}
+.shadow-sm{box-shadow:0 2px 10px rgba(15,23,42,.06)!important;}
+/* Make pagination buttons consistent */
+.pagination .page-link{border-radius:.6rem;font-weight:700;}
+/* Align icon buttons */
+.bi{vertical-align:-.1em;}
