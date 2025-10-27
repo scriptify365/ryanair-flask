@@ -402,7 +402,7 @@ def index():
             "out_weekday": out_weekday_s
         }
 
-        return render_template("result.html",
+        return render_template("results.html",
                                one_way=one_way, results=page_results,
                                page=page, total_pages=total_pages, total=total, per_page=PER_PAGE,
                                form_payload=form_payload)
