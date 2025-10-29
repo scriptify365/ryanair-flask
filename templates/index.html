@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
   <title>{{ brand }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <meta name="description" content="{{ brand }} – find cheap direct flights fast.">
 </head>
 <body>
 <header class="hero py-5">
   <div class="container text-center">
-    <h1 class="display-6 fw-bold mb-2"><i class="bi bi-airplane-engines"></i> Flight Finder</h1>
+    <h1 class="display-6 fw-bold mb-2">
+      <i class="bi bi-airplane-engines"></i> {{ brand }}
+    </h1>
     <p class="text-muted mb-0">Find cheapest Ryanair flights fast</p>
   </div>
 </header>
@@ -23,10 +27,11 @@
         <div class="card-body p-4 p-md-5">
           <form method="post" class="row g-4">
 
-            <!-- DEPARTURE: airports + single country -->
+            <!-- DEPARTURE: airports multi + (optional single) country -->
             <div class="col-md-6">
               <label class="form-label fw-semibold"><i class="bi bi-send"></i> Departure airport(s)</label>
-              <input type="text" id="dep_filter" class="form-control form-control-lg mb-2" placeholder="Type to search… then click or press Enter to add">
+              <input type="text" id="dep_filter" class="form-control form-control-lg mb-2"
+                     placeholder="Type to search… then click or press Enter to add">
               <select class="form-select fancy" name="departures" id="departures" multiple size="8">
                 {% for code, label in airports %}
                   <option value="{{ code }}" {% if form and code in form.getlist('departures') %}selected{% endif %}>{{ label }}</option>
@@ -36,7 +41,8 @@
 
               <div class="mt-4">
                 <label class="form-label fw-semibold"><i class="bi bi-flag"></i> Departure country (single)</label>
-                <input type="text" id="dep_country_filter" class="form-control form-control-lg mb-2" placeholder="Type to filter… then click to select">
+                <input type="text" id="dep_country_filter" class="form-control form-control-lg mb-2"
+                       placeholder="Type to filter… then click to select">
                 <select class="form-select fancy" id="departure_country" name="departure_country" size="6">
                   <option value=""></option>
                   {% for cc, name in countries %}
@@ -44,14 +50,15 @@
                   {% endfor %}
                 </select>
                 <div class="chips mt-2" id="dep_country_chip"></div>
-                
+                <div class="form-text">Selecting a departure country disables the departure airport list.</div>
               </div>
             </div>
 
-            <!-- ARRIVAL: single airport + multi countries -->
+            <!-- ARRIVAL: same UX (search box + list) + multi countries -->
             <div class="col-md-6">
               <label class="form-label fw-semibold"><i class="bi bi-geo-alt"></i> Arrival airport</label>
-              <input type="text" id="arr_filter" class="form-control form-control-lg mb-2" placeholder="Type to search… then click item below">
+              <input type="text" id="arr_filter" class="form-control form-control-lg mb-2"
+                     placeholder="Type to search… then click item below">
               <select class="form-select fancy" id="arrival" name="arrival" size="8">
                 <option value="" {% if form and not form.get('arrival') %}selected{% endif %}>— none —</option>
                 {% for code, label in airports %}
@@ -61,13 +68,15 @@
 
               <div class="mt-4">
                 <label class="form-label fw-semibold"><i class="bi bi-flag"></i> Destination country/countries</label>
-                <input type="text" id="country_filter" class="form-control form-control-lg mb-2" placeholder="Type to filter countries… then click or press Enter">
+                <input type="text" id="country_filter" class="form-control form-control-lg mb-2"
+                       placeholder="Type to filter countries… then click or press Enter">
                 <select class="form-select fancy" id="arrival_countries" name="arrival_countries" multiple size="6">
                   {% for cc, name in countries %}
                     <option value="{{ cc }}" {% if form and cc in form.getlist('arrival_countries') %}selected{% endif %}>{{ name }} ({{ cc }})</option>
                   {% endfor %}
                 </select>
                 <div class="chips mt-2" id="country_chips"></div>
+                <div class="form-text">Selecting any destination country disables the arrival airport list.</div>
               </div>
             </div>
 
@@ -77,16 +86,17 @@
               <div class="row">
                 <div class="col-6">
                   <label class="form-label small">From</label>
-                  <input type="date" class="form-control" name="date_from" value="{{ form.get('date_from') if form else today }}" required>
+                  <input type="date" class="form-control" name="date_from"
+                         value="{{ form.get('date_from') if form else today }}" required>
                 </div>
                 <div class="col-6">
                   <label class="form-label small">To</label>
-                  <input type="date" class="form-control" name="date_to" value="{{ form.get('date_to') if form else today }}" required>
+                  <input type="date" class="form-control" name="date_to"
+                         value="{{ form.get('date_to') if form else today }}" required>
                 </div>
               </div>
             </div>
 
-            <!-- Weekday -->
             <div class="col-md-6">
               <label class="form-label fw-semibold"><i class="bi bi-calendar-week"></i> Outbound weekday (optional)</label>
               <select class="form-select" name="out_weekday">
@@ -101,34 +111,37 @@
               </select>
             </div>
 
-            <!-- Stay duration -->
+            <!-- Stay (round-trips) -->
             <div class="col-md-6">
               <label class="form-label fw-semibold"><i class="bi bi-clock"></i> Stay duration (round trips)</label>
               <div class="row">
                 <div class="col-6">
                   <label class="form-label small">Min days</label>
-                  <input type="number" class="form-control" id="min_stay" name="min_stay" value="{{ form.get('min_stay', '1') if form else '1' }}" min="1">
+                  <input type="number" class="form-control" id="min_stay" name="min_stay"
+                         value="{{ form.get('min_stay', '1') if form else '1' }}" min="1">
                 </div>
                 <div class="col-6">
                   <label class="form-label small">Max days</label>
-                  <input type="number" class="form-control" id="max_stay" name="max_stay" value="{{ form.get('max_stay', '7') if form else '7' }}" min="1">
+                  <input type="number" class="form-control" id="max_stay" name="max_stay"
+                         value="{{ form.get('max_stay', '7') if form else '7' }}" min="1">
                 </div>
               </div>
             </div>
 
-            <!-- Currency + price -->
+            <!-- Currency & price -->
             <div class="col-md-6">
               <label class="form-label fw-semibold"><i class="bi bi-currency-exchange"></i> Currency & Price</label>
               <div class="row">
                 <div class="col-6">
                   <select class="form-select" name="currency">
-                    <option value="EUR" {% if form and form.get('currency')=='EUR' %}selected{% endif %}>EUR (€)</option>
+                    <option value="EUR" {% if not form or form.get('currency')=='EUR' %}selected{% endif %}>EUR (€)</option>
                     <option value="PLN" {% if form and form.get('currency')=='PLN' %}selected{% endif %}>PLN (zł)</option>
                     <option value="GBP" {% if form and form.get('currency')=='GBP' %}selected{% endif %}>GBP (£)</option>
                   </select>
                 </div>
                 <div class="col-6">
-                  <input type="text" class="form-control" name="max_price" placeholder="Max price" value="{{ form.get('max_price', '') if form else '' }}">
+                  <input type="text" class="form-control" name="max_price" placeholder="Max price"
+                         value="{{ form.get('max_price', '') if form else '' }}">
                 </div>
               </div>
             </div>
@@ -136,23 +149,26 @@
             <!-- One-way -->
             <div class="col-12">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="one_way_only" name="one_way_only" {% if form and form.get('one_way_only') %}checked{% endif %}>
+                <input class="form-check-input" type="checkbox" id="one_way_only" name="one_way_only"
+                       {% if form and form.get('one_way_only') %}checked{% endif %}>
                 <label class="form-check-label" for="one_way_only">
-                  <i class="bi bi-arrow-right"></i> One-way only 
+                  <i class="bi bi-arrow-right"></i> One-way only (ignore stay duration)
                 </label>
               </div>
             </div>
 
             <!-- Submit -->
-            <div class="col-12 col-md-6 offset-md-6 text-end">
-              <button class="btn btn-cta btn-cta-wide">
+            <div class="col-12 text-end">
+              <button class="btn btn-primary btn-lg px-4 shadow-sm">
                 <i class="bi bi-search"></i> Search flights
               </button>
             </div>
 
             {% if errors %}
               <div class="col-12">
-                <div class="alert alert-danger mb-0"><ul class="mb-0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+                <div class="alert alert-danger mb-0">
+                  <ul class="mb-0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                </div>
               </div>
             {% endif %}
           </form>
@@ -163,7 +179,15 @@
 </main>
 
 <footer class="py-4 text-center small">
-  <!-- footer links -->
+  <div class="d-flex gap-2 justify-content-center flex-wrap">
+    <a class="btn btn-sm btn-outline-primary" href="https://www.linkedin.com/in/maciej-kasperczyk-b425321a9/" target="_blank" rel="noopener">
+      <i class="bi bi-linkedin"></i> LinkedIn
+    </a>
+    <a class="btn btn-sm btn-outline-dark" href="mailto:maciej.kasperczyk.scriptify365@gmail.com">
+      <i class="bi bi-envelope"></i> maciej.kasperczyk.scriptify365@gmail.com
+    </a>
+  </div>
+  <div class="text-muted mt-2">© {{ brand }} by Maciej Kasperczyk</div>
 </footer>
 
 <script>
@@ -174,71 +198,39 @@
   function toggleStay(){ const dis = oneWay.checked; minStay.disabled = dis; maxStay.disabled = dis; }
   oneWay?.addEventListener('change', toggleStay); toggleStay();
 
-  // --- Touch detection: phones/tablets ---
-  const isTouch = (('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches);
-
-  // === DEPARTURES (multi) ===
+  // Departure airports (multi) — chips + filter + Enter add
   const depSel = document.getElementById('departures');
   const depFilter = document.getElementById('dep_filter');
   const depChips = document.getElementById('dep_chips');
-
   function updateDepChips(){
     depChips.innerHTML = '';
     [...depSel.options].forEach(opt=>{
       if(opt.selected){
-        const chip=document.createElement('span');
+        const chip = document.createElement('span');
         chip.className='chip'; chip.textContent=opt.text;
         const x=document.createElement('button'); x.type='button'; x.className='chip-x'; x.innerHTML='&times;';
         x.onclick=()=>{ opt.selected=false; updateDepChips(); };
-        chip.appendChild(x);
-        depChips.appendChild(chip);
+        chip.appendChild(x); depChips.appendChild(chip);
       }
     });
   }
-  function applyDepFilter(){
-    const q = (depFilter?.value || '').trim().toLowerCase();
-    [...depSel.options].forEach(opt=>{
-      const t = opt.text.toLowerCase(), v = opt.value.toLowerCase();
-      opt.hidden = !(t.includes(q) || v.includes(q));
-    });
-  }
+  depSel.addEventListener('mousedown', e=>{ e.preventDefault(); const o=e.target; if(o.tagName==='OPTION'){ o.selected=!o.selected; updateDepChips(); }});
+  function applyDepFilter(){ const q=depFilter.value.trim().toLowerCase(); [...depSel.options].forEach(o=>{ const t=o.text.toLowerCase(), v=o.value.toLowerCase(); o.hidden=!(t.includes(q)||v.includes(q)); });}
+  depFilter.addEventListener('input', applyDepFilter);
+  depFilter.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const f=[...depSel.options].find(o=>!o.hidden); if(f){ f.selected=true; updateDepChips(); depFilter.value=''; applyDepFilter(); }}});
 
-  // Desktop: toggle without Ctrl via mousedown
-  if(!isTouch){
-    depSel.addEventListener('mousedown', (e)=>{
-      e.preventDefault();
-      const opt = e.target;
-      if(opt.tagName==='OPTION'){
-        opt.selected = !opt.selected;
-        updateDepChips();
-      }
-    });
-  } else {
-    // Mobile: rely on native picker; update chips on change
-    depSel.addEventListener('change', updateDepChips, {passive:true});
-  }
-  depFilter?.addEventListener('input', applyDepFilter);
-  depFilter?.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){
-      e.preventDefault();
-      const first=[...depSel.options].find(o=>!o.hidden);
-      if(first){ first.selected=true; updateDepChips(); depFilter.value=''; applyDepFilter(); }
-    }
-  });
-
-  // === DEPARTURE COUNTRY (single) -> disables departures ===
+  // Departure country (single) -> disables airports
   const depCountrySel = document.getElementById('departure_country');
   const depCountryFilter = document.getElementById('dep_country_filter');
   const depCountryChip = document.getElementById('dep_country_chip');
-
   function toggleDepartureAirports(){
-    const any = !!(depCountrySel?.value);
+    const any = !!depCountrySel.value;
     depSel.disabled = any;
     if(any){ [...depSel.options].forEach(o=>o.selected=false); updateDepChips(); }
   }
   function updateDepCountryChip(){
     depCountryChip.innerHTML='';
-    const opt = depCountrySel.selectedOptions?.[0];
+    const opt = depCountrySel.selectedOptions[0];
     if(opt && opt.value){
       const chip=document.createElement('span'); chip.className='chip chip-country'; chip.textContent=opt.text;
       const x=document.createElement('button'); x.type='button'; x.className='chip-x'; x.innerHTML='&times;';
@@ -246,33 +238,23 @@
       chip.appendChild(x); depCountryChip.appendChild(chip);
     }
   }
-  depCountrySel?.addEventListener('change', ()=>{ updateDepCountryChip(); toggleDepartureAirports(); }, {passive:true});
-  function applyDepCountryFilter(){
-    const q=(depCountryFilter?.value || '').trim().toLowerCase();
-    [...depCountrySel.options].forEach(o=>{ if(!o.value) return; o.hidden=!o.text.toLowerCase().includes(q); });
-  }
-  depCountryFilter?.addEventListener('input', applyDepCountryFilter);
+  depCountrySel.addEventListener('change', ()=>{ updateDepCountryChip(); toggleDepartureAirports(); });
+  function applyDepCountryFilter(){ const q=depCountryFilter.value.trim().toLowerCase(); [...depCountrySel.options].forEach(o=>{ if(!o.value) return; o.hidden=!o.text.toLowerCase().includes(q); }); }
+  depCountryFilter.addEventListener('input', applyDepCountryFilter);
 
-  // === ARRIVAL (single) + filter ===
+  // Arrival airport (single) with filter
   const arrSel = document.getElementById('arrival');
   const arrFilter = document.getElementById('arr_filter');
-  function applyArrFilter(){
-    const q=(arrFilter?.value || '').trim().toLowerCase();
-    [...arrSel.options].forEach(o=>{
-      const t=o.text.toLowerCase(), v=o.value.toLowerCase();
-      o.hidden = !(t.includes(q)||v.includes(q));
-    });
-  }
-  arrFilter?.addEventListener('input', applyArrFilter);
+  function applyArrFilter(){ const q=arrFilter.value.trim().toLowerCase(); [...arrSel.options].forEach(o=>{ const t=o.text.toLowerCase(), v=o.value.toLowerCase(); o.hidden=!(t.includes(q)||v.includes(q)); });}
+  arrFilter.addEventListener('input', applyArrFilter);
 
-  // === ARRIVAL COUNTRIES (multi) -> disables arrival airport ===
+  // Arrival countries (multi) — chips + filter + disables arrival
   const countriesSel = document.getElementById('arrival_countries');
   const countryFilter = document.getElementById('country_filter');
   const countryChips = document.getElementById('country_chips');
-
   function toggleArrivalAirports(){
     const any=[...countriesSel.options].some(o=>o.selected);
-    arrSel.disabled = any;
+    arrSel.disabled=any;
     if(any){ arrSel.value=""; }
   }
   function updateCountryChips(){
@@ -286,44 +268,17 @@
       }
     });
   }
-  // Desktop: custom toggle; Mobile: native picker + change
-  if(!isTouch){
-    countriesSel.addEventListener('mousedown', (e)=>{
-      e.preventDefault();
-      const opt=e.target;
-      if(opt.tagName==='OPTION'){
-        opt.selected=!opt.selected;
-        updateCountryChips();
-        toggleArrivalAirports();
-      }
-    });
-  } else {
-    countriesSel.addEventListener('change', ()=>{
-      updateCountryChips();
-      toggleArrivalAirports();
-    }, {passive:true});
-  }
+  countriesSel.addEventListener('mousedown', e=>{ e.preventDefault(); const o=e.target; if(o.tagName==='OPTION'){ o.selected=!o.selected; updateCountryChips(); toggleArrivalAirports(); }});
+  function applyCountryFilter(){ const q=countryFilter.value.trim().toLowerCase(); [...countriesSel.options].forEach(o=>{ o.hidden=!o.text.toLowerCase().includes(q); });}
+  countryFilter.addEventListener('input', applyCountryFilter);
+  countryFilter.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const f=[...countriesSel.options].find(o=>!o.hidden); if(f){ f.selected=true; updateCountryChips(); toggleArrivalAirports(); countryFilter.value=''; applyCountryFilter(); }}});
 
-  function applyCountryFilter(){
-    const q=(countryFilter?.value || '').trim().toLowerCase();
-    [...countriesSel.options].forEach(o=>{ o.hidden=!o.text.toLowerCase().includes(q); });
-  }
-  countryFilter?.addEventListener('input', applyCountryFilter);
-  countryFilter?.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){
-      e.preventDefault();
-      const first=[...countriesSel.options].find(o=>!o.hidden);
-      if(first){ first.selected=true; updateCountryChips(); toggleArrivalAirports(); countryFilter.value=''; applyCountryFilter(); }
-    }
-  });
-
-  // --- init ---
+  // init
   applyDepFilter(); updateDepChips();
   applyDepCountryFilter(); updateDepCountryChip(); toggleDepartureAirports();
   applyArrFilter();
   applyCountryFilter(); updateCountryChips(); toggleArrivalAirports();
 </script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

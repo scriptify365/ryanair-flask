@@ -1,121 +1,53 @@
-from flask import Flask, request, render_template, Response, abort
-import requests
-from datetime import datetime, timedelta, date
+import os
+import time
 import math
-import os, time, logging
-from logging.handlers import RotatingFileHandler
+import logging
+from datetime import datetime, timedelta, date
 
-# --- Optional deps (safe imports) ---
-try:
-    import sentry_sdk
-    from sentry_sdk.integrations.flask import FlaskIntegration
-    _SENTRY_OK = True
-except Exception:
-    _SENTRY_OK = False
-
-try:
-    from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-    _PROM_OK = True
-except Exception:
-    _PROM_OK = False
-    # minimal placeholders to avoid NameError if someone hits /metrics accidentally
-    Counter = Histogram = lambda *a, **k: None
-    CONTENT_TYPE_LATEST = "text/plain"
-
-
+import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+from flask import Flask, request, render_template
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-
-# ======================
-# Monitoring bootstrap
-# ======================
-@app.context_processor
-def inject_brand():
-    # Change brand via env without touching templates
-    return {"brand": os.getenv("APP_BRAND", "Flynair")}
-
-# Sentry (only if DSN set and package available)
-SENTRY_DSN = os.getenv("SENTRY_DSN", "")
-if _SENTRY_OK and SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[FlaskIntegration()],
-        traces_sample_rate=float(os.getenv("SENTRY_TRACES", "0.2")),   # 20% sampling
-        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES", "0.0"))
-    )
-
-# Prometheus counters/histograms
-if _PROM_OK:
-    REQUEST_COUNT = Counter(
-        "http_requests_total", "Total HTTP requests",
-        ["method", "endpoint", "status"]
-    )
-    REQUEST_LATENCY = Histogram(
-        "http_request_duration_seconds", "Request latency (seconds)",
-        ["endpoint"],
-        buckets=(0.05, 0.1, 0.2, 0.5, 1, 2, 5)
-    )
-
-# Rotating logs
-os.makedirs("logs", exist_ok=True)
-handler = RotatingFileHandler("logs/app.log", maxBytes=5_000_000, backupCount=5, encoding="utf-8")
-handler.setFormatter(logging.Formatter(
-    '%(asctime)s level=%(levelname)s module=%(module)s path="%(pathname)s" '
-    'line=%(lineno)d msg="%(message)s"'
-))
-handler.setLevel(logging.INFO)
-app.logger.addHandler(handler)
 app.logger.setLevel(logging.INFO)
 
-@app.before_request
-def _start_timer():
-    request._start_time = time.perf_counter()
+# ---- Brand via ENV ----
+@app.context_processor
+def inject_brand():
+    return {"brand": os.getenv("APP_BRAND", "Flynair")}
 
-@app.after_request
-def _record_metrics(response):
-    # safe, lightweight metrics + access log
-    try:
-        endpoint = request.endpoint or "unknown"
-        dur = None
-        if hasattr(request, "_start_time"):
-            dur = time.perf_counter() - request._start_time
-            if _PROM_OK:
-                REQUEST_LATENCY.labels(endpoint=endpoint).observe(dur)
-        if _PROM_OK:
-            REQUEST_COUNT.labels(method=request.method, endpoint=endpoint, status=response.status_code).inc()
-        app.logger.info(f'{request.method} {request.path} {response.status_code} dur={dur:.3f}s')
-    except Exception as e:
-        app.logger.warning(f"metrics failed: {e}")
-    return response
+# ---- Robust HTTP: retries + pool + sane timeouts ----
+def make_session():
+    s = requests.Session()
+    retries = Retry(
+        total=3, connect=3, read=3,
+        backoff_factor=0.4,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET"]),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retries, pool_connections=50, pool_maxsize=50)
+    s.mount("https://", adapter)
+    s.mount("http://", adapter)
+    s.headers.update({"User-Agent": "Mozilla/5.0"})
+    return s
 
-@app.route("/metrics")
-def metrics():
-    """
-    Prometheus metrics (protected by bearer token if METRICS_TOKEN is set).
-    Header: Authorization: Bearer <token>
-    """
-    if not _PROM_OK:
-        return Response("prometheus-client not installed", status=503, mimetype="text/plain")
-    token = os.getenv("METRICS_TOKEN")
-    if token:
-        auth = request.headers.get("Authorization", "")
-        if auth != f"Bearer {token}":
-            return abort(401)
-    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+HTTP = make_session()
+REQ_TIMEOUT = (5, 12)     # (connect, read) – krócej niż gunicorn timeout
+AIRPORTS_TIMEOUT = (3, 8) # szybciej failuje dla listy lotnisk
 
-# ======================
-# Ryanair data + helpers
-# ======================
-
+# ---------- Ryanair airports ----------
 def fetch_airports_data():
-    ua = {"User-Agent": "Mozilla/5.0"}
     url = "https://www.ryanair.com/api/views/locate/5/airports/pl/active"
     try:
-        r = requests.get(url, headers=ua, timeout=30)
+        t0 = time.perf_counter()
+        r = HTTP.get(url, timeout=AIRPORTS_TIMEOUT)
         r.raise_for_status()
         data = r.json()
+        app.logger.info("GET airports %s in %.2fs", r.status_code, time.perf_counter()-t0)
     except Exception as e:
-        print(f"[airports] {e}")
+        app.logger.warning("[airports] %s", e)
         data = []
 
     airports_raw, countries_set = [], {}
@@ -144,6 +76,8 @@ def fetch_airports_data():
     return airports_raw, airports_for_select, countries_for_select
 
 AIRPORTS_RAW, AIRPORTS, COUNTRIES = fetch_airports_data()
+
+# Market influences currency returned by Ryanair
 MARKET_BY_CURRENCY = {"EUR": "en-ie", "PLN": "pl-pl", "GBP": "en-gb"}
 
 def build_ryanair_link(one_way, dep, arr, out_date, in_date=None):
@@ -170,7 +104,7 @@ def weekday_name(date_str):
     except Exception:
         return ""
 
-# simple FX
+# Very simple FX for display/filter
 FX = {
     ("EUR", "PLN"): 4.30, ("PLN", "EUR"): 1/4.30,
     ("EUR", "GBP"): 0.86, ("GBP", "EUR"): 1/0.86,
@@ -181,13 +115,11 @@ def convert_price(amount, from_cur, to_cur):
     rate = FX.get((from_cur, to_cur))
     return float(amount) * rate if rate is not None else None
 
-# ======================
-# Routes
-# ======================
-
+# ---------- Routes ----------
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        # Inputs
         departures = request.form.getlist("departures")
         dep_country = (request.form.get("departure_country") or "").strip()  # single
         arrival = request.form.get("arrival")
@@ -207,10 +139,11 @@ def index():
             page = 1
         PER_PAGE = 48
 
+        # Validation
         errors = []
         valid_codes = {c for c, _ in AIRPORTS}
 
-        # departures: country wins (single)
+        # Departure set: country wins (single)
         if dep_country:
             dep_airports = sorted({a["code"] for a in AIRPORTS_RAW if a["country_code"] == dep_country})
             if not dep_airports:
@@ -224,7 +157,7 @@ def index():
                 if bad: errors.append(f"Invalid departure airport(s): {', '.join(bad)}")
                 dep_airports = departures
 
-        # arrivals: multi-country allowed
+        # Arrivals: either single airport or multi-countries
         if arrival_countries:
             dest_airports = sorted({a["code"] for a in AIRPORTS_RAW if a["country_code"] in arrival_countries})
             if not dest_airports:
@@ -239,7 +172,7 @@ def index():
             else:
                 dest_airports = [arrival]
 
-        # dates
+        # Dates
         try:
             d_from = datetime.strptime(date_from_s, "%Y-%m-%d").date()
             d_to = datetime.strptime(date_to_s, "%Y-%m-%d").date()
@@ -249,7 +182,7 @@ def index():
             errors.append("Invalid dates.")
             d_from = d_to = None
 
-        # stay
+        # Stay (round-trip only)
         min_stay = max_stay = None
         if not one_way:
             try:
@@ -259,7 +192,7 @@ def index():
             except Exception:
                 errors.append("Provide valid stay days for round trips.")
 
-        # max price
+        # Max price
         max_price = None
         if max_price_s:
             try:
@@ -274,13 +207,14 @@ def index():
                                    errors=errors, form=request.form,
                                    today=date.today().isoformat())
 
+        # Build search
         market = MARKET_BY_CURRENCY.get(currency, "en-ie")
-        ua = {"User-Agent": "Mozilla/5.0"}
         wanted_weekday = int(out_weekday_s) if out_weekday_s.isdigit() else None
 
         results = []
         try:
             if one_way:
+                # One-way fares
                 for dep in dep_airports:
                     for arr in dest_airports:
                         url = (
@@ -290,52 +224,38 @@ def index():
                             f"&outboundDateTo={d_to:%Y-%m-%d}"
                             f"&market={market}&adultPaxCount=1"
                         )
-                        r = requests.get(url, headers=ua, timeout=30); r.raise_for_status()
+                        t0 = time.perf_counter()
+                        r = HTTP.get(url, timeout=REQ_TIMEOUT); r.raise_for_status()
                         data = r.json()
-                        
-                        # Parse the correct response structure
-                        outbound_data = data.get("outbound", {})
-                        fares = outbound_data.get("fares", [])
-                        
-                        for fare in fares:
-                            # Skip unavailable flights
-                            if fare.get("unavailable", True) or fare.get("price") is None:
-                                continue
-                                
-                            # Extract date from 'day' field
-                            day_str = fare.get("day")
-                            if not day_str:
-                                continue
-                                
-                            # Extract price information
-                            price_obj = fare.get("price", {})
-                            raw_price = price_obj.get("value")
-                            raw_curr = price_obj.get("currencyCode", currency).upper()
-                            
-                            # Parse the date
-                            try:
-                                d = datetime.strptime(day_str, "%Y-%m-%d").date()
-                            except:
-                                continue
-                                
-                            if d and raw_price is not None:
-                                if wanted_weekday is not None and d.weekday() != wanted_weekday:
-                                    continue
-                                conv = convert_price(raw_price, raw_curr, currency)
-                                effective_price = conv if conv is not None else (raw_price if raw_curr == currency else None)
-                                if effective_price is None:
-                                    continue
-                                if max_price is not None and effective_price > max_price:
-                                    continue
-                                out_iso = d.isoformat()
-                                results.append({
-                                    "route": f"{dep} → {arr}",
-                                    "out_date": out_iso,
-                                    "price": f"{effective_price:.2f}",
-                                    "currency": currency,
-                                    "link": build_ryanair_link(True, dep, arr, out_iso)
-                                })
+                        app.logger.info("GET oneWay %s in %.2fs", r.status_code, time.perf_counter()-t0)
+                        fares = data.get("fares") or data.get("outbound") or data
+                        if isinstance(fares, list):
+                            for f in fares:
+                                outbound = f.get("outbound") or f
+                                ds = outbound.get("departureDate") or outbound.get("date")
+                                price_info = outbound.get("price") or {}
+                                raw_price = price_info.get("value") or price_info.get("amount")
+                                raw_curr = (price_info.get("currencyCode") or price_info.get("currency") or currency).upper()
+                                ddt = parse_iso_date(ds)
+                                if ddt and raw_price is not None:
+                                    if wanted_weekday is not None and ddt.weekday() != wanted_weekday:
+                                        continue
+                                    conv = convert_price(raw_price, raw_curr, currency)
+                                    effective_price = conv if conv is not None else (raw_price if raw_curr == currency else None)
+                                    if effective_price is None:
+                                        continue
+                                    if max_price is not None and effective_price > max_price:
+                                        continue
+                                    out_iso = ddt.isoformat()
+                                    results.append({
+                                        "route": f"{dep} → {arr}",
+                                        "out_date": out_iso,
+                                        "price": f"{effective_price:.2f}",
+                                        "currency": currency,
+                                        "link": build_ryanair_link(True, dep, arr, out_iso)
+                                    })
             else:
+                # Round-trip fares
                 for dep in dep_airports:
                     for arr in dest_airports:
                         url = (
@@ -349,8 +269,10 @@ def index():
                             f"&durationFrom={min_stay}&durationTo={max_stay}"
                             f"&market={market}&adultPaxCount=1"
                         )
-                        r = requests.get(url, headers=ua, timeout=45); r.raise_for_status()
+                        t0 = time.perf_counter()
+                        r = HTTP.get(url, timeout=REQ_TIMEOUT); r.raise_for_status()
                         data = r.json()
+                        app.logger.info("GET rt %s in %.2fs", r.status_code, time.perf_counter()-t0)
                         fares = data.get("fares") or data.get("trips") or []
                         for combo in fares:
                             out = combo.get("outbound"); inn = combo.get("inbound")
@@ -375,17 +297,15 @@ def index():
                                 "link": build_ryanair_link(False, dep, arr, out_d.isoformat(), in_d.isoformat())
                             })
         except Exception as e:
-            # error surfaced as a user-friendly message, Sentry will capture stack if enabled
             return render_template("index.html",
                                    airports=AIRPORTS, countries=COUNTRIES,
                                    errors=[f"Search failed: {e}"],
                                    form=request.form, today=date.today().isoformat())
 
-        # sort + paginate
+        # Sort + paginate
         try: results.sort(key=lambda x: float(x["price"]))
         except: pass
         total = len(results)
-        PER_PAGE = 48
         total_pages = max(1, math.ceil(total / PER_PAGE))
         page = min(max(1, page), total_pages)
         start = (page - 1) * PER_PAGE; end = start + PER_PAGE
@@ -402,15 +322,15 @@ def index():
             "out_weekday": out_weekday_s
         }
 
-        return render_template("results.html",
+        return render_template("result.html",
                                one_way=one_way, results=page_results,
                                page=page, total_pages=total_pages, total=total, per_page=PER_PAGE,
                                form_payload=form_payload)
 
+    # GET → form
     return render_template("index.html",
                            airports=AIRPORTS, countries=COUNTRIES,
                            today=date.today().isoformat())
 
 if __name__ == "__main__":
-    # On production, run behind a WSGI server (gunicorn/uwsgi). This is dev server.
     app.run(use_reloader=True, debug=True)
